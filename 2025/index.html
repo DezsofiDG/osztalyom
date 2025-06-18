@@ -29,6 +29,7 @@
     // Main App component
     const App = () => {
       const [data, setData] = React.useState(null);
+      const [chartData, setChartData] = React.useState([]);
 
  // Processing and cleaning data
       const processAndCleanData = (rawData) => {
@@ -73,6 +74,57 @@
         complete: (results) => {
           const cleanedData = processAndCleanData(results.data);
           setData(cleanedData);
+        },
+        error: (err) => console.error(err)
+      });
+    })
+    .catch(err => console.error("Fájl betöltési hiba:", err));
+}, []);
+
+    React.useEffect(() => {
+  fetch("kreta_fokusz1.csv")
+    .then(response => response.text())
+    .then(csvData => {
+      Papa.parse(csvData, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim(),
+        transform: (value) => value.trim(),
+        complete: (results) => {
+          const cleanedData = results.data.map(row => ({
+            Hónap: row['Hónap'],
+            "Bukásra álló tanulók száma": parseInt(row['Bukásra álló tanulók száma']) || 0,
+            "Tanulmányi átlag": parseFloat(row['Tanulmányi átlag']) || 0
+          })).filter(row => !isNaN(row["Bukásra álló tanulók száma"]) && !isNaN(row["Tanulmányi átlag"]));
+          setChartData(cleanedData);
+        },
+        error: (err) => console.error(err)
+      });
+    })
+    .catch(err => console.error("Fájl betöltési hiba:", err));
+}, []);
+
+
+const [chartDataMulasztas, setChartDataMulasztas] = React.useState([]);
+
+React.useEffect(() => {
+  fetch("kreta_fokusz1.csv")
+    .then(response => response.text())
+    .then(csvData => {
+      Papa.parse(csvData, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim(),
+        transform: (value) => value.trim(),
+        complete: (results) => {
+          const cleanedData = results.data.map(row => ({
+            Hónap: row['Hónap'],
+            Összes: parseFloat(row['Összes']) || 0,
+            Igazolt: parseFloat(row['Igazolt']) || 0,
+            Igazolandó: parseFloat(row['Igazolandó']) || 0,
+            Igazolatlan: parseFloat(row['Igazolatlan']) || 0
+          })).filter(row => !isNaN(row['Összes']) && !isNaN(row['Igazolt']) && !isNaN(row['Igazolandó']) && !isNaN(row['Igazolatlan']));
+          setChartDataMulasztas(cleanedData);
         },
         error: (err) => console.error(err)
       });
@@ -194,7 +246,7 @@
               az osztályátlag 4,05. A legmagasabb tanulmányi átlaggal Völgyi Szonja rendelkezik (4,8), 
               kiemelkedő teljesítményt nyújtva minden tantárgyban, csak matematikából kapott 4-es osztályzatot, így jeles eredményű. 
               Az osztályban senki sem bukott meg, és mindössze négy tanuló kapott tantárgyi dícséretet testnevelés tantárgyból (Havanyecz Lola, Pszota Kitti, Üveges Emma, Völgyi Szonja). 
-              A hiányzások száma jelentős szórást mutat, a legmagasabb érték 241 óra (Szászi Gréta), míg a legalacsonyabb 27 óra (Balogh Ágoston).
+              A hiányzások száma jelentős szórást mutat, a legmagasabb érték 239 óra (Szászi Gréta), míg a legalacsonyabb 27 óra (Balogh Ágoston).
             </p>
           </section>
 
@@ -208,7 +260,7 @@
             <Recharts.ResponsiveContainer width="100%" height={400}>
               <Recharts.BarChart data={subjectAverages} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <Recharts.CartesianGrid strokeDasharray="3 3" />
-                <Recharts.XAxis dataKey="subject"  fontSize={22} />
+                <Recharts.XAxis dataKey="subject"  textAnchor="end" fontSize={12} />
                 <Recharts.YAxis domain={[0, 5]} fontSize={12} />
                 <Recharts.Tooltip />
                 <Recharts.Legend verticalAlign="top" height={36}/>
@@ -216,7 +268,47 @@
               </Recharts.BarChart>
             </Recharts.ResponsiveContainer>
           </section>
+          <section className="mb-8">
+          <img src="kreta_fokusz.png" alt=""/>
+          
+          </section >
 
+          {/* Bukásra álló tanulók és tanulmányi átlag diagram */}
+<section className="mb-8">
+  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Bukásra álló tanulók száma és tanulmányi átlag</h2>
+  <div className="flex justify-center">
+    <div className="w-full h-96 max-w-3xl"> {/* max-w-3xl korlátozza a szélességet, hogy centrálható legyen */}
+      <Recharts.ComposedChart
+        width={600}
+        height={300}
+        data={chartData}
+        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+      >
+        <Recharts.CartesianGrid stroke="#f5f5f5" />
+        <Recharts.XAxis dataKey="Hónap" />
+        <Recharts.YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+        <Recharts.YAxis
+          yAxisId="right"
+          orientation="right"
+          stroke="#ff7300"
+          domain={[3.7, 4.0]}
+        />
+        <Recharts.Tooltip />
+        <Recharts.Legend />
+        <Recharts.Bar yAxisId="left" dataKey="Bukásra álló tanulók száma" fill="#8884d8" barSize={20}>
+          <Recharts.LabelList dataKey="Bukásra álló tanulók száma" position="top" />
+        </Recharts.Bar>
+        <Recharts.Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="Tanulmányi átlag"
+          stroke="#ff7300"
+          dot={true}
+        />
+      </Recharts.ComposedChart>
+    </div>
+  </div>
+</section>
           {/* Grade Distribution Chart */}
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Osztályzatok eloszlása tantárgyanként</h2>
@@ -382,6 +474,53 @@
             </Recharts.ResponsiveContainer>
           </section>
 
+            {/* Összes és igazolt mulasztások diagram */}
+<section className="mb-8">
+  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Összes mulasztási adatok (óra/fő)</h2>
+  <div className="flex justify-center">
+    <div className="w-full h-96 max-w-3xl">
+      <Recharts.LineChart
+        width={800}
+        height={400}
+        data={chartDataMulasztas}
+        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+      >
+        <Recharts.CartesianGrid stroke="#f5f5f5" />
+        <Recharts.XAxis dataKey="Hónap" />
+        <Recharts.YAxis domain={[0, 150]} />
+        <Recharts.Tooltip />
+        <Recharts.Legend />
+        <Recharts.Line type="monotone" dataKey="Összes" stroke="#8884d8" strokeWidth={5} dot={true} />
+        <Recharts.Line type="monotone" dataKey="Igazolt" stroke="#82ca9d" strokeWidth={5} dot={true} />
+        <Recharts.Line type="monotone" dataKey="Igazolandó" stroke="#ffc658" strokeWidth={5} dot={true} />
+        <Recharts.Line type="monotone" dataKey="Igazolatlan" stroke="#ff0000" strokeWidth={5} dot={true} />
+      </Recharts.LineChart>
+    </div>
+  </div>
+</section>
+
+{/* Igazolt mulasztások diagram */}
+<section className="mb-8">
+  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Összes igazolt mulasztási adatok (óra/fő)</h2>
+  <div className="flex justify-center">
+    <div className="w-full h-96 max-w-3xl">
+      <Recharts.LineChart
+        width={800}
+        height={400}
+        data={chartDataMulasztas}
+        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+      >
+        <Recharts.CartesianGrid stroke="#f5f5f5" />
+        <Recharts.XAxis dataKey="Hónap" />
+        <Recharts.YAxis domain={[0, 150]} />
+        <Recharts.Tooltip />
+        <Recharts.Legend />
+        <Recharts.Line type="monotone" dataKey="Összes" stroke="#8884d8" strokeWidth={5} dot={true} />
+        <Recharts.Line type="monotone" dataKey="Igazolt" stroke="#82ca9d" strokeWidth={5} dot={true} />
+      </Recharts.LineChart>
+    </div>
+  </div>
+</section>
 
           {/* Excellent Grades Table */}
           <section className="mb-8">
@@ -490,7 +629,7 @@
               és az osztályátlag 4,05. Völgyi Szonja kiemelkedik a 4,8-as tanulmányi átlaggal, 
               szorosan követi Jákób Dávid, Juhász Dóra és Siri Botond (4,6), míg a legrosszabb eredmények 3,2; 3,6 átlagot mutatnak. A Matematika tantárgy a legnehezebb, 
               itt a legalacsonyabb az átlag (3,48), két tanuló is 2-est kapott. A hiányzások jelentős szórást mutatnak, 
-              a legmagasabb értékek (241 és 234 óra) messze meghaladják az osztályátlagot (139,2 óra), ami hatással lehet 
+              a legmagasabb értékek (241 és 234 óra) messze meghaladják az osztályátlagot (137 óra), ami hatással lehet 
               a tanulók teljesítményére. Valamely tantárgyból elégségesre teljesítő tanulók: Áfra Áron, 
               Havanyecz Lola, matematika, valamint Üveges Emma angol nyelv. Fontos a hiányzások csökkentésére irányuló intézkedések 
               bevezetése, különösen a magas hiányzással rendelkező nem sportoló tanulók (Szászi Gréta, Töreczki Barna) esetében.
